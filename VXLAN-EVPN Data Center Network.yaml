@@ -6,8 +6,8 @@ nodes:
         content: |2-
 
           !Command: show running-config
-          !Running configuration last done at: Tue Jun 30 01:59:16 2026
-          !Time: Tue Jun 30 01:59:16 2026
+          !Running configuration last done at: Tue Jun 30 22:07:49 2026
+          !Time: Tue Jun 30 22:07:50 2026
 
           version 10.4(2) Bios:version
           hostname S1
@@ -294,8 +294,8 @@ nodes:
         content: |2-
 
           !Command: show running-config
-          !Running configuration last done at: Tue Jun 30 01:59:21 2026
-          !Time: Tue Jun 30 01:59:22 2026
+          !Running configuration last done at: Tue Jun 30 22:08:34 2026
+          !Time: Tue Jun 30 22:08:34 2026
 
           version 10.4(2) Bios:version
           hostname L1
@@ -310,6 +310,7 @@ nodes:
           feature ospf
           feature bgp
           feature pim
+          feature interface-vlan
           feature vn-segment-vlan-based
           feature nv overlay
 
@@ -326,17 +327,44 @@ nodes:
           rmon event 4 log trap public description WARNING(4) owner PMON@WARNING
           rmon event 5 log trap public description INFORMATION(5) owner PMON@INFO
 
+          fabric forwarding anycast-gateway-mac 0000.2222.3333
           ip pim rp-address 10.100.100.100 group-list 224.0.0.0/4
-          vlan 1,10
+          vlan 1,10,999
           vlan 10
             vn-segment 100010
+          vlan 999
+            name L3-TRANSIT
+            vn-segment 50000
 
+          route-map OVERLAY_SUBNETS permit 10
+            match tag 50000
+          vrf context TENANT-A
+            vni 50000
+            rd auto
+            address-family ipv4 unicast
+              route-target both auto
+              route-target both auto evpn
           vrf context management
+
+
+          interface Vlan1
+
+          interface Vlan10
+            no shutdown
+            vrf member TENANT-A
+            ip address 192.168.10.1/24 tag 50000
+            fabric forwarding mode anycast-gateway
+
+          interface Vlan999
+            no shutdown
+            vrf member TENANT-A
+            ip forward
 
           interface nve1
             no shutdown
             host-reachability protocol bgp
             source-interface loopback0
+            member vni 50000 associate-vrf
             member vni 100010
               mcast-group 239.0.0.10
 
@@ -512,6 +540,10 @@ nodes:
               update-source loopback0
               address-family l2vpn evpn
                 send-community extended
+            vrf TENANT-A
+              address-family ipv4 unicast
+                advertise l2vpn evpn
+                redistribute direct route-map OVERLAY_SUBNETS
           evpn
             vni 100010 l2
               rd auto
@@ -577,8 +609,8 @@ nodes:
         content: |2-
 
           !Command: show running-config
-          !Running configuration last done at: Tue Jun 30 01:59:27 2026
-          !Time: Tue Jun 30 01:59:28 2026
+          !Running configuration last done at: Tue Jun 30 22:08:41 2026
+          !Time: Tue Jun 30 22:08:41 2026
 
           version 10.4(2) Bios:version
           hostname L2
@@ -593,6 +625,7 @@ nodes:
           feature ospf
           feature bgp
           feature pim
+          feature interface-vlan
           feature vn-segment-vlan-based
           feature nv overlay
 
@@ -609,19 +642,52 @@ nodes:
           rmon event 4 log trap public description WARNING(4) owner PMON@WARNING
           rmon event 5 log trap public description INFORMATION(5) owner PMON@INFO
 
+          fabric forwarding anycast-gateway-mac 0000.2222.3333
           ip pim rp-address 10.100.100.100 group-list 224.0.0.0/4
-          vlan 1,10,20
+          vlan 1,10,20,999
           vlan 10
             vn-segment 100010
           vlan 20
             vn-segment 100020
+          vlan 999
+            name L3-TRANSIT
+            vn-segment 50000
 
+          route-map OVERLAY_SUBNETS permit 10
+            match tag 50000
+          vrf context TENANT-A
+            vni 50000
+            rd auto
+            address-family ipv4 unicast
+              route-target both auto
+              route-target both auto evpn
           vrf context management
+
+
+          interface Vlan1
+
+          interface Vlan10
+            no shutdown
+            vrf member TENANT-A
+            ip address 192.168.10.1/24 tag 50000
+            fabric forwarding mode anycast-gateway
+
+          interface Vlan20
+            no shutdown
+            vrf member TENANT-A
+            ip address 192.168.20.1/24 tag 50000
+            fabric forwarding mode anycast-gateway
+
+          interface Vlan999
+            no shutdown
+            vrf member TENANT-A
+            ip forward
 
           interface nve1
             no shutdown
             host-reachability protocol bgp
             source-interface loopback0
+            member vni 50000 associate-vrf
             member vni 100010
               mcast-group 239.0.0.10
             member vni 100020
@@ -799,6 +865,10 @@ nodes:
               update-source loopback0
               address-family l2vpn evpn
                 send-community extended
+            vrf TENANT-A
+              address-family ipv4 unicast
+                advertise l2vpn evpn
+                redistribute direct route-map OVERLAY_SUBNETS
           evpn
             vni 100010 l2
               rd auto
@@ -868,8 +938,8 @@ nodes:
         content: |2-
 
           !Command: show running-config
-          !Running configuration last done at: Tue Jun 30 01:59:16 2026
-          !Time: Tue Jun 30 01:59:16 2026
+          !Running configuration last done at: Tue Jun 30 22:08:42 2026
+          !Time: Tue Jun 30 22:08:42 2026
 
           version 10.4(2) Bios:version
           hostname L3
@@ -884,6 +954,7 @@ nodes:
           feature ospf
           feature bgp
           feature pim
+          feature interface-vlan
           feature vn-segment-vlan-based
           feature nv overlay
 
@@ -900,17 +971,44 @@ nodes:
           rmon event 4 log trap public description WARNING(4) owner PMON@WARNING
           rmon event 5 log trap public description INFORMATION(5) owner PMON@INFO
 
+          fabric forwarding anycast-gateway-mac 0000.2222.3333
           ip pim rp-address 10.100.100.100 group-list 224.0.0.0/4
-          vlan 1,20
+          vlan 1,20,999
           vlan 20
             vn-segment 100020
+          vlan 999
+            name L3-TRANSIT
+            vn-segment 50000
 
+          route-map OVERLAY_SUBNETS permit 10
+            match tag 50000
+          vrf context TENANT-A
+            vni 50000
+            rd auto
+            address-family ipv4 unicast
+              route-target both auto
+              route-target both auto evpn
           vrf context management
+
+
+          interface Vlan1
+
+          interface Vlan20
+            no shutdown
+            vrf member TENANT-A
+            ip address 192.168.20.1/24 tag 50000
+            fabric forwarding mode anycast-gateway
+
+          interface Vlan999
+            no shutdown
+            vrf member TENANT-A
+            ip forward
 
           interface nve1
             no shutdown
             host-reachability protocol bgp
             source-interface loopback0
+            member vni 50000 associate-vrf
             member vni 100020
               mcast-group 239.0.0.20
 
@@ -1084,6 +1182,10 @@ nodes:
               update-source loopback0
               address-family l2vpn evpn
                 send-community extended
+            vrf TENANT-A
+              address-family ipv4 unicast
+                advertise l2vpn evpn
+                redistribute direct route-map OVERLAY_SUBNETS
           evpn
             vni 100020 l2
               rd auto
@@ -1149,8 +1251,8 @@ nodes:
         content: |2-
 
           !Command: show running-config
-          !Running configuration last done at: Tue Jun 30 01:59:21 2026
-          !Time: Tue Jun 30 01:59:22 2026
+          !Running configuration last done at: Tue Jun 30 22:07:46 2026
+          !Time: Tue Jun 30 22:07:47 2026
 
           version 10.4(2) Bios:version
           hostname S2
