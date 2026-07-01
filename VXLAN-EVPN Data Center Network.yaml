@@ -6,8 +6,8 @@ nodes:
         content: |2-
 
           !Command: show running-config
-          !Running configuration last done at: Tue Jun 30 22:07:49 2026
-          !Time: Tue Jun 30 22:07:50 2026
+          !Running configuration last done at: Wed Jul  1 20:47:39 2026
+          !Time: Wed Jul  1 20:47:39 2026
 
           version 10.4(2) Bios:version
           hostname S1
@@ -211,6 +211,7 @@ nodes:
             exec-timeout 0
           line vty
             exec-timeout 0
+          boot nxos bootflash:/nxos64-cs.10.4.2.F.bin
           router ospf UNDERLAY
           router bgp 65000
             router-id 10.0.0.11
@@ -250,8 +251,8 @@ nodes:
     parameters: {}
     ram: null
     tags: []
-    x: -120
-    y: 0
+    x: -160
+    y: -40
     interfaces:
       - id: i0
         label: Loopback0
@@ -294,8 +295,8 @@ nodes:
         content: |2-
 
           !Command: show running-config
-          !Running configuration last done at: Tue Jun 30 22:08:34 2026
-          !Time: Tue Jun 30 22:08:34 2026
+          !Running configuration last done at: Wed Jul  1 20:48:25 2026
+          !Time: Wed Jul  1 20:48:25 2026
 
           version 10.4(2) Bios:version
           hostname L1
@@ -306,12 +307,15 @@ nodes:
             limit-resource m4route-mem minimum 58 maximum 58
             limit-resource m6route-mem minimum 8 maximum 8
 
+          cfs eth distribute
           nv overlay evpn
           feature ospf
           feature bgp
           feature pim
           feature interface-vlan
           feature vn-segment-vlan-based
+          feature lacp
+          feature vpc
           feature nv overlay
 
           no password strength-check
@@ -329,12 +333,14 @@ nodes:
 
           fabric forwarding anycast-gateway-mac 0000.2222.3333
           ip pim rp-address 10.100.100.100 group-list 224.0.0.0/4
-          vlan 1,10,999
+          vlan 1,10,999,1234
           vlan 10
             vn-segment 100010
           vlan 999
             name L3-TRANSIT
             vn-segment 50000
+          vlan 1234
+            name VPC-Peerlink
 
           route-map OVERLAY_SUBNETS permit 10
             match tag 50000
@@ -344,21 +350,45 @@ nodes:
             address-family ipv4 unicast
               route-target both auto
               route-target both auto evpn
+          vrf context VPC
           vrf context management
+          system nve infra-vlans 1234
+          vpc domain 1
+            peer-switch
+            peer-keepalive destination 10.255.255.2 source 10.255.255.1 vrf VPC
+            peer-gateway
+            ipv6 nd synchronize
+            ip arp synchronize
 
 
           interface Vlan1
+            no ip redirects
+            no ipv6 redirects
 
           interface Vlan10
             no shutdown
             vrf member TENANT-A
+            no ip redirects
             ip address 192.168.10.1/24 tag 50000
+            no ipv6 redirects
             fabric forwarding mode anycast-gateway
 
           interface Vlan999
             no shutdown
             vrf member TENANT-A
+            no ip redirects
             ip forward
+            no ipv6 redirects
+
+          interface port-channel10
+            switchport access vlan 10
+            spanning-tree port type edge trunk
+            vpc 10
+
+          interface port-channel100
+            switchport mode trunk
+            spanning-tree port type network
+            vpc peer-link
 
           interface nve1
             no shutdown
@@ -387,10 +417,18 @@ nodes:
             no shutdown
 
           interface Ethernet1/3
+            no switchport
+            vrf member VPC
+            ip address 10.255.255.1/30
+            no shutdown
 
           interface Ethernet1/4
+            switchport mode trunk
+            channel-group 100 mode active
 
           interface Ethernet1/5
+            switchport mode trunk
+            channel-group 100 mode active
 
           interface Ethernet1/6
             switchport access vlan 10
@@ -399,6 +437,7 @@ nodes:
           interface Ethernet1/7
             switchport access vlan 10
             spanning-tree port type edge
+            channel-group 10
 
           interface Ethernet1/8
 
@@ -519,6 +558,7 @@ nodes:
 
           interface loopback0
             ip address 10.0.0.1/32
+            ip address 10.1.1.100/32 secondary
             ip router ospf UNDERLAY area 0.0.0.0
             ip pim sparse-mode
           icam monitor scale
@@ -527,6 +567,7 @@ nodes:
             exec-timeout 0
           line vty
             exec-timeout 0
+          boot nxos bootflash:/nxos64-cs.10.4.2.F.bin
           router ospf UNDERLAY
           router bgp 65000
             router-id 10.0.0.1
@@ -565,7 +606,7 @@ nodes:
     parameters: {}
     ram: null
     tags: []
-    x: -200
+    x: -240
     y: 200
     interfaces:
       - id: i0
@@ -614,6 +655,7 @@ nodes:
 
           version 10.4(2) Bios:version
           hostname L2
+          boot nxos bootflash:nxos64-cs.10.4.2.F.bin
           vdc L2 id 1
             limit-resource vlan minimum 16 maximum 4094
             limit-resource vrf minimum 2 maximum 4097
@@ -889,13 +931,13 @@ nodes:
     hide_links: false
     id: n2
     image_definition: null
-    label: L2
+    label: L2 O
     node_definition: nxosv9000
     parameters: {}
     ram: null
     tags: []
     x: -40
-    y: 200
+    y: 520
     interfaces:
       - id: i0
         label: Loopback0
@@ -943,6 +985,7 @@ nodes:
 
           version 10.4(2) Bios:version
           hostname L3
+          boot nxos bootflash::nxos64-cs.10.4.2.F.bin
           vdc L3 id 1
             limit-resource vlan minimum 16 maximum 4094
             limit-resource vrf minimum 2 maximum 4097
@@ -1202,13 +1245,13 @@ nodes:
     hide_links: false
     id: n3
     image_definition: null
-    label: L3
+    label: L3 0
     node_definition: nxosv9000
     parameters: {}
     ram: null
     tags: []
-    x: 120
-    y: 200
+    x: 40
+    y: 520
     interfaces:
       - id: i0
         label: Loopback0
@@ -1251,8 +1294,8 @@ nodes:
         content: |2-
 
           !Command: show running-config
-          !Running configuration last done at: Tue Jun 30 22:07:46 2026
-          !Time: Tue Jun 30 22:07:47 2026
+          !Running configuration last done at: Wed Jul  1 20:47:49 2026
+          !Time: Wed Jul  1 20:47:50 2026
 
           version 10.4(2) Bios:version
           hostname S2
@@ -1456,6 +1499,7 @@ nodes:
             exec-timeout 0
           line vty
             exec-timeout 0
+          boot nxos bootflash:/nxos64-cs.10.4.2.F.bin
           router ospf UNDERLAY
           router bgp 65000
             router-id 10.0.0.12
@@ -1495,8 +1539,8 @@ nodes:
     parameters: {}
     ram: null
     tags: []
-    x: 40
-    y: 0
+    x: 0
+    y: -40
     interfaces:
       - id: i0
         label: Loopback0
@@ -1534,19 +1578,31 @@ nodes:
         slot: 7
         type: physical
   - boot_disk_size: null
-    configuration: []
+    configuration:
+      - name: node.cfg
+        content: |-
+          # this is a shell script which will be sourced at boot
+          hostname inserthostname-here
+          # configurable user account
+          USERNAME=cisco
+          PASSWORD=cisco
+          #cloud-config
+          runcmd:
+            - ip link set dev eth0 up
+            - ip addr add 192.168.10.10/24 dev eth0
+            - ip route add default via 192.168.10.1
     cpu_limit: null
     cpus: null
     data_volume: null
     hide_links: false
     id: n5
     image_definition: null
-    label: H-0
+    label: H0
     node_definition: alpine
     parameters: {}
     ram: null
     tags: []
-    x: -240
+    x: -280
     y: 360
     interfaces:
       - id: i0
@@ -1554,19 +1610,31 @@ nodes:
         slot: 0
         type: physical
   - boot_disk_size: null
-    configuration: []
+    configuration:
+      - name: node.cfg
+        content: |-
+          # this is a shell script which will be sourced at boot
+          hostname inserthostname-here
+          # configurable user account
+          USERNAME=cisco
+          PASSWORD=cisco
+          #cloud-config
+          runcmd:
+            - ip link set dev eth0 up
+            - ip addr add 192.168.10.12/24 dev eth0
+            - ip route add default via 192.168.10.1
     cpu_limit: null
     cpus: null
     data_volume: null
     hide_links: false
     id: n6
     image_definition: null
-    label: H-1
+    label: H2
     node_definition: alpine
     parameters: {}
     ram: null
     tags: []
-    x: -160
+    x: -40
     y: 360
     interfaces:
       - id: i0
@@ -1574,19 +1642,31 @@ nodes:
         slot: 0
         type: physical
   - boot_disk_size: null
-    configuration: []
+    configuration:
+      - name: node.cfg
+        content: |-
+          # this is a shell script which will be sourced at boot
+          hostname inserthostname-here
+          # configurable user account
+          USERNAME=cisco
+          PASSWORD=cisco
+          #cloud-config
+          runcmd:
+            - ip link set dev eth0 up
+            - ip addr add 192.168.20.13/24 dev eth0
+            - ip route add default via 192.168.20.1
     cpu_limit: null
     cpus: null
     data_volume: null
     hide_links: false
     id: n7
     image_definition: null
-    label: H-2
+    label: H3
     node_definition: alpine
     parameters: {}
     ram: null
     tags: []
-    x: -80
+    x: 40
     y: 360
     interfaces:
       - id: i0
@@ -1594,34 +1674,26 @@ nodes:
         slot: 0
         type: physical
   - boot_disk_size: null
-    configuration: []
+    configuration:
+      - name: node.cfg
+        content: |-
+          # this is a shell script which will be sourced at boot
+          hostname inserthostname-here
+          # configurable user account
+          USERNAME=cisco
+          PASSWORD=cisco
+          #cloud-config
+          runcmd:
+            - ip link set dev eth0 up
+            - ip addr add 192.168.20.14/24 dev eth0
+            - ip route add default via 192.168.20.1
     cpu_limit: null
     cpus: null
     data_volume: null
     hide_links: false
     id: n8
     image_definition: null
-    label: H-3
-    node_definition: alpine
-    parameters: {}
-    ram: null
-    tags: []
-    x: 0
-    y: 360
-    interfaces:
-      - id: i0
-        label: eth0
-        slot: 0
-        type: physical
-  - boot_disk_size: null
-    configuration: []
-    cpu_limit: null
-    cpus: null
-    data_volume: null
-    hide_links: false
-    id: n9
-    image_definition: null
-    label: H-4
+    label: H4
     node_definition: alpine
     parameters: {}
     ram: null
@@ -1633,6 +1705,742 @@ nodes:
         label: eth0
         slot: 0
         type: physical
+  - boot_disk_size: null
+    configuration:
+      - name: nxos_config.txt
+        content: |2-
+
+          !Command: show running-config
+          !Running configuration last done at: Wed Jul  1 20:48:28 2026
+          !Time: Wed Jul  1 20:48:29 2026
+
+          version 10.4(2) Bios:version
+          hostname L2
+          vdc L2 id 1
+            limit-resource vlan minimum 16 maximum 4094
+            limit-resource vrf minimum 2 maximum 4097
+            limit-resource port-channel minimum 0 maximum 511
+            limit-resource m4route-mem minimum 58 maximum 58
+            limit-resource m6route-mem minimum 8 maximum 8
+
+          cfs eth distribute
+          nv overlay evpn
+          feature ospf
+          feature bgp
+          feature pim
+          feature interface-vlan
+          feature vn-segment-vlan-based
+          feature lacp
+          feature vpc
+          feature nv overlay
+
+          no password strength-check
+          username admin password 5 $5$JEBCJL$tryl0OA/gF.mD.HA/fsTxdg6pe2cDchqY14AWnP5KOA  role network-admin
+          username cisco password 5 $5$NGALIB$rAMs7kCtV/mXAUtbpcbVb3ffMOXcrNxb62r9rmgsBWA  role network-admin
+          username cisco passphrase  lifetime 99999 warntime 14 gracetime 3
+          ip domain-lookup
+          snmp-server user admin network-admin auth md5 49437E7D8D41BAAF16AA0F135DE3F8F6747C priv aes-128 52067829924FAEE641A82B06119F8AF67C29 localizedV2key
+          snmp-server user cisco network-admin auth md5 166E7D3FE91699987B8F76454C84BDBA5940 priv aes-128 041A29689733BEA85EE30C0118C0EBEF0442 localizedV2key
+          rmon event 1 log trap public description FATAL(1) owner PMON@FATAL
+          rmon event 2 log trap public description CRITICAL(2) owner PMON@CRITICAL
+          rmon event 3 log trap public description ERROR(3) owner PMON@ERROR
+          rmon event 4 log trap public description WARNING(4) owner PMON@WARNING
+          rmon event 5 log trap public description INFORMATION(5) owner PMON@INFO
+
+          fabric forwarding anycast-gateway-mac 0000.2222.3333
+          ip pim rp-address 10.100.100.100 group-list 224.0.0.0/4
+          vlan 1,10,20,999,1234
+          vlan 10
+            vn-segment 100010
+          vlan 20
+            vn-segment 100020
+          vlan 999
+            name L3-TRANSIT
+            vn-segment 50000
+          vlan 1234
+            name VPC-Peerlink
+
+          route-map OVERLAY_SUBNETS permit 10
+            match tag 50000
+          vrf context TENANT-A
+            vni 50000
+            rd auto
+            address-family ipv4 unicast
+              route-target both auto
+              route-target both auto evpn
+          vrf context VPC
+          vrf context management
+          system nve infra-vlans 1234
+          vpc domain 1
+            peer-switch
+            peer-keepalive destination 10.255.255.1 source 10.255.255.2 vrf VPC
+            peer-gateway
+            ipv6 nd synchronize
+            ip arp synchronize
+
+
+          interface Vlan1
+            no ip redirects
+            no ipv6 redirects
+
+          interface Vlan10
+            no shutdown
+            vrf member TENANT-A
+            no ip redirects
+            ip address 192.168.10.1/24 tag 50000
+            no ipv6 redirects
+            fabric forwarding mode anycast-gateway
+
+          interface Vlan20
+            no shutdown
+            vrf member TENANT-A
+            no ip redirects
+            ip address 192.168.20.1/24 tag 50000
+            no ipv6 redirects
+            fabric forwarding mode anycast-gateway
+
+          interface Vlan999
+            no shutdown
+            vrf member TENANT-A
+            no ip redirects
+            ip forward
+            no ipv6 redirects
+
+          interface port-channel10
+            switchport access vlan 10
+            spanning-tree port type edge trunk
+            vpc 10
+
+          interface port-channel100
+            switchport mode trunk
+            spanning-tree port type network
+            vpc peer-link
+
+          interface nve1
+            no shutdown
+            host-reachability protocol bgp
+            source-interface loopback0
+            member vni 50000 associate-vrf
+            member vni 100010
+              mcast-group 239.0.0.10
+            member vni 100020
+              mcast-group 239.0.0.20
+
+          interface Ethernet1/1
+            no switchport
+            mtu 9216
+            ip address 10.2.11.2/24
+            ip ospf network point-to-point
+            ip router ospf UNDERLAY area 0.0.0.0
+            ip pim sparse-mode
+            no shutdown
+
+          interface Ethernet1/2
+            no switchport
+            mtu 9216
+            ip address 10.2.12.2/24
+            ip ospf network point-to-point
+            ip router ospf UNDERLAY area 0.0.0.0
+            ip pim sparse-mode
+            no shutdown
+
+          interface Ethernet1/3
+            no switchport
+            vrf member VPC
+            ip address 10.255.255.2/30
+            no shutdown
+
+          interface Ethernet1/4
+            switchport mode trunk
+            channel-group 100 mode active
+
+          interface Ethernet1/5
+            switchport mode trunk
+            channel-group 100 mode active
+
+          interface Ethernet1/6
+            switchport access vlan 10
+            spanning-tree port type edge
+
+          interface Ethernet1/7
+            switchport access vlan 20
+            spanning-tree port type edge
+
+          interface Ethernet1/8
+
+          interface Ethernet1/9
+            switchport access vlan 10
+            spanning-tree port type edge
+            channel-group 10
+
+          interface Ethernet1/10
+
+          interface Ethernet1/11
+
+          interface Ethernet1/12
+
+          interface Ethernet1/13
+
+          interface Ethernet1/14
+
+          interface Ethernet1/15
+
+          interface Ethernet1/16
+
+          interface Ethernet1/17
+
+          interface Ethernet1/18
+
+          interface Ethernet1/19
+
+          interface Ethernet1/20
+
+          interface Ethernet1/21
+
+          interface Ethernet1/22
+
+          interface Ethernet1/23
+
+          interface Ethernet1/24
+
+          interface Ethernet1/25
+
+          interface Ethernet1/26
+
+          interface Ethernet1/27
+
+          interface Ethernet1/28
+
+          interface Ethernet1/29
+
+          interface Ethernet1/30
+
+          interface Ethernet1/31
+
+          interface Ethernet1/32
+
+          interface Ethernet1/33
+
+          interface Ethernet1/34
+
+          interface Ethernet1/35
+
+          interface Ethernet1/36
+
+          interface Ethernet1/37
+
+          interface Ethernet1/38
+
+          interface Ethernet1/39
+
+          interface Ethernet1/40
+
+          interface Ethernet1/41
+
+          interface Ethernet1/42
+
+          interface Ethernet1/43
+
+          interface Ethernet1/44
+
+          interface Ethernet1/45
+
+          interface Ethernet1/46
+
+          interface Ethernet1/47
+
+          interface Ethernet1/48
+
+          interface Ethernet1/49
+
+          interface Ethernet1/50
+
+          interface Ethernet1/51
+
+          interface Ethernet1/52
+
+          interface Ethernet1/53
+
+          interface Ethernet1/54
+
+          interface Ethernet1/55
+
+          interface Ethernet1/56
+
+          interface Ethernet1/57
+
+          interface Ethernet1/58
+
+          interface Ethernet1/59
+
+          interface Ethernet1/60
+
+          interface Ethernet1/61
+
+          interface Ethernet1/62
+
+          interface Ethernet1/63
+
+          interface Ethernet1/64
+
+          interface mgmt0
+            vrf member management
+
+          interface loopback0
+            ip address 10.0.0.2/32
+            ip address 10.1.1.100/32 secondary
+            ip router ospf UNDERLAY area 0.0.0.0
+            ip pim sparse-mode
+          icam monitor scale
+
+          line console
+            exec-timeout 0
+          line vty
+            exec-timeout 0
+          router ospf UNDERLAY
+          router bgp 65000
+            router-id 10.0.0.2
+            address-family l2vpn evpn
+            neighbor 10.0.0.11
+              remote-as 65000
+              update-source loopback0
+              address-family l2vpn evpn
+                send-community extended
+            neighbor 10.0.0.12
+              remote-as 65000
+              update-source loopback0
+              address-family l2vpn evpn
+                send-community extended
+            vrf TENANT-A
+              address-family ipv4 unicast
+                advertise l2vpn evpn
+                redistribute direct route-map OVERLAY_SUBNETS
+          evpn
+            vni 100010 l2
+              rd auto
+              route-target import auto
+              route-target export auto
+            vni 100020 l2
+              rd auto
+              route-target import auto
+              route-target export auto
+          event manager applet BOOTCONFIG
+            event syslog pattern "Configured from vty"
+            action 1.0 cli python bootflash:set_boot.py
+
+          no logging console
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n9
+    image_definition: null
+    label: L2
+    node_definition: nxosv9000
+    parameters: {}
+    ram: null
+    tags: []
+    x: -40
+    y: 200
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: mgmt0
+        slot: 0
+        type: physical
+      - id: i2
+        label: Ethernet1/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: Ethernet1/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: Ethernet1/3
+        slot: 3
+        type: physical
+      - id: i5
+        label: Ethernet1/4
+        slot: 4
+        type: physical
+      - id: i6
+        label: Ethernet1/5
+        slot: 5
+        type: physical
+      - id: i7
+        label: Ethernet1/6
+        slot: 6
+        type: physical
+      - id: i8
+        label: Ethernet1/7
+        slot: 7
+        type: physical
+      - id: i9
+        label: Ethernet1/8
+        slot: 8
+        type: physical
+      - id: i10
+        label: Ethernet1/9
+        slot: 9
+        type: physical
+      - id: i11
+        label: Ethernet1/10
+        slot: 10
+        type: physical
+      - id: i12
+        label: Ethernet1/11
+        slot: 11
+        type: physical
+  - boot_disk_size: null
+    configuration:
+      - name: nxos_config.txt
+        content: |2-
+
+          !Command: show running-config
+          !Running configuration last done at: Wed Jul  1 20:48:48 2026
+          !Time: Wed Jul  1 20:48:48 2026
+
+          version 10.4(2) Bios:version
+          hostname L3
+          vdc L3 id 1
+            limit-resource vlan minimum 16 maximum 4094
+            limit-resource vrf minimum 2 maximum 4097
+            limit-resource port-channel minimum 0 maximum 511
+            limit-resource m4route-mem minimum 58 maximum 58
+            limit-resource m6route-mem minimum 8 maximum 8
+
+          nv overlay evpn
+          feature ospf
+          feature bgp
+          feature pim
+          feature interface-vlan
+          feature vn-segment-vlan-based
+          feature nv overlay
+
+          no password strength-check
+          username admin password 5 $5$JHBBOM$x.gLdpeCum/nbmGDMCuIxMu5HG94vE3c.0Be4empwPC  role network-admin
+          username cisco password 5 $5$EDKDJP$8a8/Evr8m3Ion4Z/jt/21W0OHi01vDGib.nUBTYxTv/  role network-admin
+          username cisco passphrase  lifetime 99999 warntime 14 gracetime 3
+          ip domain-lookup
+          snmp-server user admin network-admin auth md5 365F4C888AAB320C47BBDA84801A3185B889 priv aes-128 364B4997C4A56E4812EDD4DB8D4E16CEAED7 localizedV2key
+          snmp-server user cisco network-admin auth md5 205F469BDFA3797906FCC1D9DA4117C5A98D priv aes-128 041A1AC29F8A211E0DAD899BCC174F9E8FA7 localizedV2key
+          rmon event 1 log trap public description FATAL(1) owner PMON@FATAL
+          rmon event 2 log trap public description CRITICAL(2) owner PMON@CRITICAL
+          rmon event 3 log trap public description ERROR(3) owner PMON@ERROR
+          rmon event 4 log trap public description WARNING(4) owner PMON@WARNING
+          rmon event 5 log trap public description INFORMATION(5) owner PMON@INFO
+
+          fabric forwarding anycast-gateway-mac 0000.2222.3333
+          ip pim rp-address 10.100.100.100 group-list 224.0.0.0/4
+          vlan 1,20,999
+          vlan 20
+            vn-segment 100020
+          vlan 999
+            name L3-TRANSIT
+            vn-segment 50000
+
+          route-map OVERLAY_SUBNETS permit 10
+            match tag 50000
+          vrf context TENANT-A
+            vni 50000
+            rd auto
+            address-family ipv4 unicast
+              route-target both auto
+              route-target both auto evpn
+          vrf context management
+
+
+          interface Vlan1
+
+          interface Vlan20
+            no shutdown
+            vrf member TENANT-A
+            ip address 192.168.20.1/24 tag 50000
+            fabric forwarding mode anycast-gateway
+
+          interface Vlan999
+            no shutdown
+            vrf member TENANT-A
+            ip forward
+
+          interface nve1
+            no shutdown
+            host-reachability protocol bgp
+            source-interface loopback0
+            member vni 50000 associate-vrf
+            member vni 100020
+              mcast-group 239.0.0.20
+
+          interface Ethernet1/1
+            no switchport
+            mtu 9216
+            ip address 10.3.11.3/24
+            ip ospf network point-to-point
+            ip router ospf UNDERLAY area 0.0.0.0
+            ip pim sparse-mode
+            no shutdown
+
+          interface Ethernet1/2
+            no switchport
+            mtu 9216
+            ip address 10.3.12.3/24
+            ip ospf network point-to-point
+            ip router ospf UNDERLAY area 0.0.0.0
+            ip pim sparse-mode
+            no shutdown
+
+          interface Ethernet1/3
+            switchport access vlan 20
+            spanning-tree port type edge
+
+          interface Ethernet1/4
+
+          interface Ethernet1/5
+
+          interface Ethernet1/6
+
+          interface Ethernet1/7
+
+          interface Ethernet1/8
+
+          interface Ethernet1/9
+
+          interface Ethernet1/10
+
+          interface Ethernet1/11
+
+          interface Ethernet1/12
+
+          interface Ethernet1/13
+
+          interface Ethernet1/14
+
+          interface Ethernet1/15
+
+          interface Ethernet1/16
+
+          interface Ethernet1/17
+
+          interface Ethernet1/18
+
+          interface Ethernet1/19
+
+          interface Ethernet1/20
+
+          interface Ethernet1/21
+
+          interface Ethernet1/22
+
+          interface Ethernet1/23
+
+          interface Ethernet1/24
+
+          interface Ethernet1/25
+
+          interface Ethernet1/26
+
+          interface Ethernet1/27
+
+          interface Ethernet1/28
+
+          interface Ethernet1/29
+
+          interface Ethernet1/30
+
+          interface Ethernet1/31
+
+          interface Ethernet1/32
+
+          interface Ethernet1/33
+
+          interface Ethernet1/34
+
+          interface Ethernet1/35
+
+          interface Ethernet1/36
+
+          interface Ethernet1/37
+
+          interface Ethernet1/38
+
+          interface Ethernet1/39
+
+          interface Ethernet1/40
+
+          interface Ethernet1/41
+
+          interface Ethernet1/42
+
+          interface Ethernet1/43
+
+          interface Ethernet1/44
+
+          interface Ethernet1/45
+
+          interface Ethernet1/46
+
+          interface Ethernet1/47
+
+          interface Ethernet1/48
+
+          interface Ethernet1/49
+
+          interface Ethernet1/50
+
+          interface Ethernet1/51
+
+          interface Ethernet1/52
+
+          interface Ethernet1/53
+
+          interface Ethernet1/54
+
+          interface Ethernet1/55
+
+          interface Ethernet1/56
+
+          interface Ethernet1/57
+
+          interface Ethernet1/58
+
+          interface Ethernet1/59
+
+          interface Ethernet1/60
+
+          interface Ethernet1/61
+
+          interface Ethernet1/62
+
+          interface Ethernet1/63
+
+          interface Ethernet1/64
+
+          interface mgmt0
+            vrf member management
+
+          interface loopback0
+            ip address 10.0.0.3/32
+            ip router ospf UNDERLAY area 0.0.0.0
+            ip pim sparse-mode
+          icam monitor scale
+
+          line console
+            exec-timeout 0
+          line vty
+            exec-timeout 0
+          router ospf UNDERLAY
+          router bgp 65000
+            router-id 10.0.0.3
+            neighbor 10.0.0.11
+              remote-as 65000
+              update-source loopback0
+              address-family l2vpn evpn
+                send-community extended
+            neighbor 10.0.0.12
+              remote-as 65000
+              update-source loopback0
+              address-family l2vpn evpn
+                send-community extended
+            vrf TENANT-A
+              address-family ipv4 unicast
+                advertise l2vpn evpn
+                redistribute direct route-map OVERLAY_SUBNETS
+          evpn
+            vni 100020 l2
+              rd auto
+              route-target import auto
+              route-target export auto
+          event manager applet BOOTCONFIG
+            event syslog pattern "Configured from vty"
+            action 1.0 cli python bootflash:set_boot.py
+
+          no logging console
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n10
+    image_definition: null
+    label: L3
+    node_definition: nxosv9000
+    parameters: {}
+    ram: null
+    tags: []
+    x: 120
+    y: 200
+    interfaces:
+      - id: i0
+        label: Loopback0
+        type: loopback
+      - id: i1
+        label: mgmt0
+        slot: 0
+        type: physical
+      - id: i2
+        label: Ethernet1/1
+        slot: 1
+        type: physical
+      - id: i3
+        label: Ethernet1/2
+        slot: 2
+        type: physical
+      - id: i4
+        label: Ethernet1/3
+        slot: 3
+        type: physical
+  - boot_disk_size: null
+    configuration:
+      - name: node.cfg
+        content: |-
+          # this is a shell script which will be sourced at boot
+          hostname inserthostname-here
+          # configurable user account
+          USERNAME=cisco
+          PASSWORD=cisco
+          #cloud-config
+          runcmd:
+            - modprobe bonding
+            - ip link add bond0 type bond mode 2 miimon 100
+            - ip link set dev eth0 master bond0
+            - ip link set dev eth1 master bond0
+            - ip link set dev eth0 up
+            - ip link set dev eth1 up
+            - ip link set dev bond0 up
+            - ip addr add 192.168.10.11/24 dev bond0
+            - ip route add default via 192.168.10.1
+    cpu_limit: null
+    cpus: null
+    data_volume: null
+    hide_links: false
+    id: n11
+    image_definition: null
+    label: H1
+    node_definition: alpine
+    parameters: {}
+    ram: null
+    tags: []
+    x: -160
+    y: 360
+    interfaces:
+      - id: i0
+        label: eth0
+        slot: 0
+        type: physical
+      - id: i1
+        label: eth1
+        slot: 1
+        type: physical
+      - id: i2
+        label: eth2
+        slot: 2
+        type: physical
+      - id: i3
+        label: eth3
+        slot: 3
+        type: physical
 links:
   - id: l0
     n1: n0
@@ -1642,75 +2450,103 @@ links:
     conditioning: {}
     label: S1-Ethernet1/1<->L1-Ethernet1/1
   - id: l1
-    n1: n0
-    n2: n2
-    i1: i3
-    i2: i2
-    conditioning: {}
-    label: S1-Ethernet1/2<->L2-Ethernet1/1
-  - id: l2
-    n1: n0
-    n2: n3
-    i1: i4
-    i2: i2
-    conditioning: {}
-    label: S1-Ethernet1/3<->L3-Ethernet1/1
-  - id: l3
     n1: n4
     n2: n1
     i1: i2
     i2: i3
     conditioning: {}
     label: S2-Ethernet1/1<->L1-Ethernet1/2
-  - id: l4
-    n1: n4
-    n2: n2
-    i1: i3
-    i2: i3
-    conditioning: {}
-    label: S2-Ethernet1/2<->L2-Ethernet1/2
-  - id: l5
-    n1: n4
-    n2: n3
-    i1: i4
-    i2: i3
-    conditioning: {}
-    label: S2-Ethernet1/3<->L3-Ethernet1/2
-  - id: l6
+  - id: l2
     n1: n1
     n2: n5
     i1: i7
     i2: i0
     conditioning: {}
     label: L1-Ethernet1/6<->H-0-eth0
-  - id: l7
-    n1: n1
-    n2: n6
-    i1: i8
-    i2: i0
+  - id: l3
+    n1: n0
+    n2: n9
+    i1: i3
+    i2: i2
     conditioning: {}
-    label: L1-Ethernet1/7<->H-1-eth0
-  - id: l8
-    n1: n2
-    n2: n7
+    label: S1-Ethernet1/2<->nxos9000-0-Ethernet1/1
+  - id: l4
+    n1: n4
+    n2: n9
+    i1: i3
+    i2: i3
+    conditioning: {}
+    label: S2-Ethernet1/2<->nxos9000-0-Ethernet1/2
+  - id: l5
+    n1: n9
+    n2: n6
     i1: i7
     i2: i0
     conditioning: {}
-    label: L2-Ethernet1/6<->H-2-eth0
+    label: nxos9000-0-Ethernet1/6<->H-2-eth0
+  - id: l6
+    n1: n9
+    n2: n7
+    i1: i8
+    i2: i0
+    conditioning: {}
+    label: nxos9000-0-Ethernet1/7<->H-3-eth0
+  - id: l7
+    n1: n10
+    n2: n4
+    i1: i3
+    i2: i4
+    conditioning: {}
+    label: nxos9000-0-Ethernet1/2<->S2-Ethernet1/3
+  - id: l8
+    n1: n0
+    n2: n10
+    i1: i4
+    i2: i2
+    conditioning: {}
+    label: S1-Ethernet1/3<->nxos9000-0-Ethernet1/1
   - id: l9
-    n1: n2
+    n1: n10
     n2: n8
-    i1: i8
+    i1: i4
     i2: i0
     conditioning: {}
-    label: L2-Ethernet1/7<->H-3-eth0
+    label: nxos9000-0-Ethernet1/3<->H-4-eth0
   - id: l10
-    n1: n3
+    n1: n1
     n2: n9
-    i1: i8
-    i2: i0
+    i1: i4
+    i2: i4
     conditioning: {}
-    label: L3-Ethernet1/7<->H-4-eth0
+    label: L1-Ethernet1/3<->L2-Ethernet1/3
+  - id: l11
+    n1: n1
+    n2: n9
+    i1: i5
+    i2: i5
+    conditioning: {}
+    label: L1-Ethernet1/4<->L2-Ethernet1/4
+  - id: l12
+    n1: n1
+    n2: n9
+    i1: i6
+    i2: i6
+    conditioning: {}
+    label: L1-Ethernet1/5<->L2-Ethernet1/5
+  - id: l13
+    n1: n1
+    n2: n11
+    i1: i8
+    i2: i1
+    conditioning: {}
+    label: L1-Ethernet1/7<->alpine-0-eth1
+  - id: l14
+    n1: n9
+    n2: n11
+    i1: i10
+    i2: i2
+    conditioning: {}
+    label: L2-Ethernet1/9<->alpine-0-eth2
 lab:
   description: ''
   notes: ''
